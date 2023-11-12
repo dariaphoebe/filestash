@@ -52,7 +52,7 @@ jobs:
       run: timeout 5 ./dist/filestash || code=$?; if [[ $code -ne 124 ]]; then exit $code; fi
 
   test_frontend:
-    needs: [build_frontend, build_backend]
+    needs: build_backend
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -68,15 +68,13 @@ jobs:
     - name: Setup
       run: |
         npm install
-        cd ./test/unit_js
-        npm install
+        cd ./test/unit_js && npm install
     - name: Run
       run: |
-        cd ./test/unit_js
-        npm test
+        npm --prefix ./test/unit_js test
 
   test_backend:
-    needs: [build_frontend, build_backend]
+    needs: build_backend
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -127,7 +125,7 @@ jobs:
          cat access.log | grep -vz "ERR"
 
   test_e2e:
-    needs: [test_smoke]
+    needs: build_backend
     runs-on: ubuntu-latest
     container:
       image: machines/puppeteer
@@ -149,9 +147,8 @@ jobs:
         name: build
     - name: Setup - deps
       run: |
-        npm run --prefix ./test/e2e install
-        cd ./test/e2e && npm install
         chmod +x ../filestash
+        cd ./test/e2e && npm install
     - name: Run
       run: |
         ./filestash > /dev/null &
@@ -160,7 +157,7 @@ jobs:
 
   release_docker_amd64:
     if: github.ref == 'refs/heads/master'
-    needs: [ test_e2e, test_backend, test_frontend ]
+    needs: [ test_e2e, test_backend, test_frontend, test_smoke ]
     runs-on: ubuntu-latest
     steps:
     - name: Init
@@ -177,7 +174,7 @@ jobs:
 
   release_docker_arm64:
     if: github.ref == 'refs/heads/master'
-    needs: [ test_e2e, test_backend, test_frontend ]
+    needs: [ test_e2e, test_backend, test_frontend, test_smoke ]
     runs-on: ubuntu-latest
     steps:
     - name: Init
